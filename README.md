@@ -11,7 +11,7 @@ Install Steam, choose your game, and play through Wine and DXMT.
 
 > **v1.0 release candidate.** Known launch, audio and performance issues remain.
 > Read the release notes before downloading. Build 6 is Developer ID signed and
-> notarized; the installer remains in the draft release pending release review.
+> notarized; the installer is available in the [v1.0 prerelease](https://github.com/haeli05/MacVolvo/releases/tag/v1.0).
 
 ## What it does
 
