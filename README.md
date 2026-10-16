@@ -5,13 +5,15 @@
 A free, open-source Mac launcher built on [Recall](https://github.com/AsherJN/recall).
 Install Steam, choose your game, and play through Wine and DXMT.
 
+## [⬇ Download MacVolvo for macOS (.dmg)](https://github.com/haeli05/MacVolvo/releases/download/v1.0/MacVolvo-1.0.dmg)
+
 [Introduction](https://haeli05.github.io/MacVolvo/) ·
 [Downloads & releases](https://github.com/haeli05/MacVolvo/releases) ·
 [Report a bug](https://github.com/haeli05/MacVolvo/issues)
 
 > **v1.0 release candidate.** Known launch, audio and performance issues remain.
 > Read the release notes before downloading. Build 6 is Developer ID signed and
-> notarized; the installer remains in the draft release pending release review.
+> notarized; the installer is available in the [v1.0 prerelease](https://github.com/haeli05/MacVolvo/releases/tag/v1.0).
 
 ## What it does
 
