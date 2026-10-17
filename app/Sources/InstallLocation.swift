@@ -4,7 +4,7 @@ import Foundation
 // The internal default needs no decision; another folder is checked here when
 // picked, and the setup helper enforces the same drive rules for any new folder.
 enum InstallLocation {
-    static let folderName="MacVolvo"
+    static let folderName=Brand.dataFolderName
     static let savedKey="installLocation"
     static var standard:URL { FileManager.default.urls(for:.applicationSupportDirectory,in:.userDomainMask)[0].appendingPathComponent(folderName) }
     static func isStandard(_ root:URL)->Bool { root.standardizedFileURL.path == standard.standardizedFileURL.path }
@@ -12,7 +12,7 @@ enum InstallLocation {
     /// an MacVolvo folder inside it.
     static func root(forChosen folder:URL)->URL {
         let folder=folder.standardizedFileURL
-        let marker=folder.appendingPathComponent(".macvolvo-owner").path
+        let marker=folder.appendingPathComponent(Brand.ownerMarker).path
         return folder.lastPathComponent == folderName || FileManager.default.fileExists(atPath:marker) ? folder : folder.appendingPathComponent(folderName)
     }
     /// False while the drive holding the folder is disconnected. The helper never
@@ -45,6 +45,13 @@ enum InstallLocation {
     }
     /// The reason a chosen folder can't hold an installation, or nil.
     static func problem(for root:URL)->String? {
+        var ancestor=root.standardizedFileURL
+        while ancestor.path != "/" {
+            if FileManager.default.fileExists(atPath:ancestor.appendingPathComponent(Brand.otherOwnerMarker).path) {
+                return "This location belongs to the other MacVolvo app. Choose a separate folder."
+            }
+            ancestor=ancestor.deletingLastPathComponent()
+        }
         let folder=root.deletingLastPathComponent()
         let keys:Set<URLResourceKey>=[.volumeIsReadOnlyKey,.volumeIsLocalKey,.volumeTypeNameKey,.volumeLocalizedFormatDescriptionKey,.volumeSupportsCaseSensitiveNamesKey,.volumeLocalizedNameKey,.isUbiquitousItemKey]
         guard let values=try? folder.resourceValues(forKeys:keys) else { return "That folder can’t be read. Choose another location." }
@@ -60,7 +67,7 @@ enum InstallLocation {
             return "Folders synced to iCloud Drive or other cloud storage aren’t supported. Choose a folder that isn’t synced."
         }
         let fm=FileManager.default
-        if fm.fileExists(atPath:root.path),!fm.fileExists(atPath:root.appendingPathComponent(".macvolvo-owner").path),
+        if fm.fileExists(atPath:root.path),!fm.fileExists(atPath:root.appendingPathComponent(Brand.ownerMarker).path),
            (try? fm.contentsOfDirectory(atPath:root.path))?.isEmpty == false {
             return "That “\(folderName)” folder already contains other files. Choose another location."
         }

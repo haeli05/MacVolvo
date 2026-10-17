@@ -2,7 +2,13 @@
  * the inherited environment or personal preference sections. */
 static NSDictionary *parityReport(NSString *engine, NSDictionary *env) {
     NSMutableDictionary *files=[NSMutableDictionary dictionary];
-    for(NSString *name in @[@"bin/wine",@"bin/wineserver",@"lib/wine/x86_64-windows/d3d11.dll",@"lib/wine/x86_64-windows/dxgi.dll",@"lib/wine/x86_64-windows/winemetal.dll",@"lib/wine/x86_64-unix/winemetal.so",@"lib/wine/x86_64-unix/winemac.so",@"lib/wine/x86_64-unix/ntdll.so",@"lib/wine/x86_64-unix/win32u.so"])
+    NSMutableArray *names=[@[@"bin/wine",@"bin/wineserver",@"lib/wine/x86_64-windows/d3d11.dll",@"lib/wine/x86_64-windows/dxgi.dll",@"lib/wine/x86_64-unix/winemac.so",@"lib/wine/x86_64-unix/ntdll.so",@"lib/wine/x86_64-unix/win32u.so"] mutableCopy];
+#ifdef MACVOLVO_GPTK4
+    [names addObject:@"lib/external/D3DMetal.framework/Versions/A/D3DMetal"];
+#else
+    [names addObjectsFromArray:@[@"lib/wine/x86_64-windows/winemetal.dll",@"lib/wine/x86_64-unix/winemetal.so"]];
+#endif
+    for(NSString *name in names)
         files[name]=hashFile(join(engine,name));
     NSMutableDictionary *preferences=[NSMutableDictionary dictionary];
     NSString *path=settingsPath();
@@ -28,12 +34,14 @@ static NSMutableDictionary *diagnosticEnvironment(NSString *engine) {
     NSString *folder=join(root,join(@"logs",[@"parity-" stringByAppendingString:NSUUID.UUID.UUIDString]));
     mkdirs(folder);
     NSMutableDictionary *env=wineEnv(engine);
+#ifndef MACVOLVO_GPTK4
     for(NSString *kind in @[@"FRAME",@"GEOMETRY",@"WINDOW",@"DISPLAY",@"CANVAS",@"SHADER",@"PIPELINE_CACHE",@"RESOURCE"]) {
         NSString *path=join(folder,kind.lowercaseString);
         if([@[@"FRAME",@"GEOMETRY",@"WINDOW",@"SHADER",@"RESOURCE"] containsObject:kind])path=[@"Z:" stringByAppendingString:[path stringByReplacingOccurrencesOfString:@"/" withString:@"\\"]];
         env[[NSString stringWithFormat:@"DXMT_%@_LOG",kind]]=path;
     }
     env[@"WINEMAC_INPUT_STATS"]=join(folder,@"input");
+#endif
     writeJSON(parityReport(engine,env),join(folder,@"launch.json"));
     event(@"diagnostics_started",@{@"folder":folder});
     return env;

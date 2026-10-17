@@ -308,6 +308,15 @@ static BOOL isStandIn(NSString *path) {
     NSData *mark=[@"steamwebhelper_real.exe" dataUsingEncoding:NSUTF16LittleEndianStringEncoding];
     return data && [data rangeOfData:mark options:0 range:NSMakeRange(0,data.length)].location!=NSNotFound;
 }
+/* A first update installs CEF after launch's initial check. Opening Steam again
+ * must repair that idle client instead of merely focusing its black window. */
+static BOOL steamWindowFixNeeded(void) {
+    NSString *cef=join(steamFolder(),@"bin/cef/cef.win64"),*helper=join(cef,@"steamwebhelper.exe"),*real=join(cef,@"steamwebhelper_real.exe");
+    if(![fm fileExistsAtPath:helper])return NO; // Steam is still bootstrapping.
+    NSString *standIn=[helperPath(@"../Resources/steamwebhelper.exe") stringByStandardizingPath];
+    if(!isStandIn(standIn))fail(@"steam_helper_install_failed");
+    return !isStandIn(helper) || ![fm fileExistsAtPath:real] || isStandIn(real) || ![hashFile(helper) isEqual:hashFile(standIn)];
+}
 /* Puts the stand-in helper in place (again after a Steam update replaced it) and turns GPU
  * web views on. NO when Steam's own helper isn't there to run: before Steam's first update,
  * or when it went missing, in which case the stand-ins are removed and Steam's startup check
@@ -353,7 +362,7 @@ static void makeGameApps(NSString *engine) {
         NSMutableDictionary *info=[[NSDictionary dictionaryWithContentsOfFile:plist] mutableCopy];
         if(!info) {[fm removeItemAtPath:app error:nil];continue;}
         info[@"CFBundleName"]=mvGames[i].name;
-        info[@"CFBundleIdentifier"]=[@"app.macvolvo.game." stringByAppendingString:mvGames[i].key];
+        info[@"CFBundleIdentifier"]=[MV_GAME_ID_PREFIX stringByAppendingString:mvGames[i].key];
         info[@"NSMicrophoneUsageDescription"]=[mvGames[i].name stringByAppendingString:@" uses the microphone for voice chat."];
         [info removeObjectForKey:@"NSLocalNetworkUsageDescription"];
         [info writeToFile:plist atomically:YES];

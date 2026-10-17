@@ -42,7 +42,7 @@ final class AppModel {
     var installedGames=[Game]()
     /// The game this app last started; names the running game on the running screen.
     var launchedGame: Game?
-    var automaticUpdates=UserDefaults.standard.object(forKey:"automaticUpdateChecks") as? Bool ?? true {
+    var automaticUpdates=Brand.allowsUpdates && (UserDefaults.standard.object(forKey:"automaticUpdateChecks") as? Bool ?? true) {
         didSet { UserDefaults.standard.set(automaticUpdates,forKey:"automaticUpdateChecks") }
     }
     /// Opening the app opens Steam too. Off, the player starts it with Open Steam.
@@ -360,7 +360,7 @@ final class AppModel {
     /// Automatic checks run at launch and, while the app stays open, at most
     /// every 12 hours. A manual check shows its result in the update sheet.
     func checkForUpdates(manual:Bool, present:Bool=true) {
-        guard !isPreview else { return }
+        guard Brand.allowsUpdates,!isPreview else { return }
         switch update { case .checking, .downloading, .installing: if manual && present { sheet = .update };return; default: break }
         update = .checking;updateNotice="";lastUpdateCheck=Date()
         if manual && present { sheet = .update }
@@ -377,7 +377,7 @@ final class AppModel {
     }
     private var installTask: Task<Void,Never>?
     func installUpdate() {
-        guard case .available(let item)=update,!busy else { return }
+        guard Brand.allowsUpdates,case .available(let item)=update,!busy else { return }
         guard let team=UpdateInstaller.team(of:Bundle.main.bundleURL),let identifier=Bundle.main.bundleIdentifier else {
             NSWorkspace.shared.open(item.page);return   // Builds without a Developer ID signature update by hand.
         }
@@ -392,7 +392,7 @@ final class AppModel {
                     if !processes.isEmpty { _ = try await service.run("close-client",event:receive) }
                 }
                 update = .downloading(0)
-                let work=FileManager.default.urls(for:.cachesDirectory,in:.userDomainMask)[0].appendingPathComponent("app.macvolvo.launcher/update")
+                let work=FileManager.default.urls(for:.cachesDirectory,in:.userDomainMask)[0].appendingPathComponent(Brand.bundleIdentifier+"/update")
                 try await UpdateInstaller.install(item,over:Bundle.main.bundleURL,team:team,identifier:identifier,work:work) { fraction in
                     Task { @MainActor in if case .downloading=self.update { self.update = .downloading(fraction) } }
                 }
@@ -907,7 +907,7 @@ final class AppModel {
             catch { uninstall = .failed((error as? SetupFailure ?? SetupFailure(code:"unexpected_setup_error")).message);return }
             // The game folder is in the Trash. Now remove what lives outside it:
             // the single-instance lock folder, saved defaults, then the app itself.
-            let lockDirectory=fm.urls(for:.cachesDirectory,in:.userDomainMask)[0].appendingPathComponent("app.macvolvo.launcher")
+            let lockDirectory=fm.urls(for:.cachesDirectory,in:.userDomainMask)[0].appendingPathComponent(Brand.bundleIdentifier)
             try? fm.removeItem(at:lockDirectory)
             if let id=Bundle.main.bundleIdentifier { UserDefaults.standard.removePersistentDomain(forName:id) }
             // Move to Trash, never delete; if macOS refuses, the user drags it.

@@ -13,8 +13,10 @@
  * WEBHELPER_EXTRA_ARGS (environment, optional) is appended too, for testing other Chrome flags.
  *
  * Build: x86_64-w64-mingw32-clang -O2 -municode -o steamwebhelper.exe webhelper_wrapper.c */
+#define _WIN32_WINNT 0x0a00
 #include <windows.h>
 #include <wchar.h>
+#include "gptk4_display_fix.h"
 
 static const WCHAR extra[] = L" --in-process-gpu";
 
@@ -49,7 +51,9 @@ int wmain(void)
     if (!CreateProcessW(path, cmd, NULL, NULL, TRUE, CREATE_SUSPENDED, NULL, NULL, &si, &pi)) return 1;
     if (!AssignProcessToJobObject(job, pi.hProcess)) { TerminateProcess(pi.hProcess, 1); return 1; }
     ResumeThread(pi.hThread);
+    MVDisplayWatcher watcher=mvStartDisplayWatcher();
     WaitForSingleObject(pi.hProcess, INFINITE);
+    mvStopDisplayWatcher(watcher);
     GetExitCodeProcess(pi.hProcess, &code);
     return code;
 }

@@ -38,7 +38,7 @@ def layout_dmg(app, output, volume_name, work):
                          'then run this script with that Python (or pass --plain)')
     background = work / 'background.png'
     run('/usr/bin/swift', ROOT / 'scripts/dmg_background.swift', ROOT / 'app/Resources/Wordmark.png', background,
-        APP_NAME, WINDOW[0], WINDOW[1] + 40, APP_X, APPLICATIONS_X, ICON_Y)
+        app.stem, WINDOW[0], WINDOW[1] + 40, APP_X, APPLICATIONS_X, ICON_Y)
     settings = {
         'format': 'UDZO', 'compression_level': 9, 'filesystem': 'HFS+',
         'files': [str(app)], 'symlinks': {'Applications': '/Applications'},

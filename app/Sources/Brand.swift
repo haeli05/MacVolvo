@@ -6,7 +6,20 @@ import Foundation
 // (app.macvolvo.launcher) and data folder (MacVolvo), so it never touches an
 // installed Recall.
 enum Brand {
+    #if MACVOLVO_GPTK4
+    static let name="MacVolvo GPTK4"
+    static let bundleIdentifier="app.macvolvo.gptk4"
+    static let ownerMarker=".macvolvo-gptk4-owner"
+    static let otherOwnerMarker=".macvolvo-owner"
+    static let allowsUpdates=false
+    #else
     static let name="MacVolvo"
+    static let bundleIdentifier="app.macvolvo.launcher"
+    static let ownerMarker=".macvolvo-owner"
+    static let otherOwnerMarker=".macvolvo-gptk4-owner"
+    static let allowsUpdates=true
+    #endif
+    static let dataFolderName=name
     static let tagline="Counter-Strike 2 and Deadlock on Apple Silicon."
     static let repositoryPath="haeli05/MacVolvo"
     static let repository=URL(string:"https://github.com/\(repositoryPath)")!

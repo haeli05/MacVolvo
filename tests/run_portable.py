@@ -15,6 +15,8 @@ PORTABLE_MODULES = (
     'test_windowed_preferences', 'test_prepare_dxmt_pipelines',
     'test_summarize_frames', 'test_process_probe', 'test_summarize_display',
     'test_v1_finish', 'test_derive_runtime', 'test_pipeline_helper',
+    'test_macvolvo_lifecycle', 'test_macvolvo_running_actions', 'test_macvolvo_session',
+    'test_gptk4_variant', 'test_steam_window_fix', 'test_gptk4_display_fix',
 )
 
 

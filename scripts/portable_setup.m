@@ -24,6 +24,20 @@
 #include "candidate_contract.generated.h"
 #pragma clang diagnostic pop
 
+#ifdef MACVOLVO_GPTK4
+#define MV_DATA_FOLDER @"MacVolvo GPTK4"
+#define MV_OWNER_MARKER @".macvolvo-gptk4-owner"
+#define MV_OTHER_OWNER_MARKER @".macvolvo-owner"
+#define MV_OWNER_TEXT "macvolvo-gptk4-v01\n"
+#define MV_GAME_ID_PREFIX @"app.macvolvo.gptk4.game."
+#else
+#define MV_DATA_FOLDER @"MacVolvo"
+#define MV_OWNER_MARKER @".macvolvo-owner"
+#define MV_OTHER_OWNER_MARKER @".macvolvo-gptk4-owner"
+#define MV_OWNER_TEXT "macvolvo-native-v01\n"
+#define MV_GAME_ID_PREFIX @"app.macvolvo.game."
+#endif
+
 static NSFileManager *fm;
 static NSString *root;
 static int lockFD = -1;
@@ -97,6 +111,8 @@ static void supportedVolume(NSString *path) {
 static void ownRoot(NSString *requested) {
     root = [[requested stringByStandardizingPath] stringByResolvingSymlinksInPath];
     if (![root isAbsolutePath] || [root isEqual:@"/"] || [root isEqual:NSHomeDirectory()]) fail(@"unsafe_install_directory");
+    for(NSString *ancestor=root;![ancestor isEqual:@"/"];ancestor=ancestor.stringByDeletingLastPathComponent)
+        if([fm fileExistsAtPath:join(ancestor,MV_OTHER_OWNER_MARKER)])fail(@"directory_not_owned_by_app");
     // Only the data folder itself is ever created. A disconnected external
     // drive must not turn into a stray folder on the internal disk.
     NSString *parent = [root stringByDeletingLastPathComponent];
@@ -110,7 +126,7 @@ static void ownRoot(NSString *requested) {
         struct statfs mounted;
         if (statfs(volume.fileSystemRepresentation,&mounted) || strcmp(mounted.f_mntonname,volume.fileSystemRepresentation)) fail(@"install_location_unavailable");
     }
-    NSString *marker = join(root,@".macvolvo-owner");
+    NSString *marker = join(root,MV_OWNER_MARKER);
     if ([fm fileExistsAtPath:root] && ![fm fileExistsAtPath:marker] &&
         [fm contentsOfDirectoryAtPath:root error:nil].count) fail(@"directory_not_owned_by_app");
     // New locations only: an existing installation is never re-judged.
@@ -122,8 +138,9 @@ static void ownRoot(NSString *requested) {
     int markerFD = open(marker.fileSystemRepresentation,O_RDWR|O_CREAT|O_NOFOLLOW,0600);
     if (markerFD < 0) fail(@"invalid_ownership_marker");
     char bytes[32] = {0}; ssize_t n=read(markerFD,bytes,sizeof(bytes));
-    if (n==0) { if(write(markerFD,"macvolvo-native-v01\n",20)!=20) {close(markerFD);fail(@"ownership_write_failed");} }
-    else if(n!=20 || memcmp(bytes,"macvolvo-native-v01\n",20)) {close(markerFD);fail(@"invalid_ownership_marker");}
+    const size_t markerLength=sizeof(MV_OWNER_TEXT)-1;
+    if (n==0) { if(write(markerFD,MV_OWNER_TEXT,markerLength)!=(ssize_t)markerLength) {close(markerFD);fail(@"ownership_write_failed");} }
+    else if(n!=(ssize_t)markerLength || memcmp(bytes,MV_OWNER_TEXT,markerLength)) {close(markerFD);fail(@"invalid_ownership_marker");}
     close(markerFD);
     lockFD=open(join(root,@"setup.lock").fileSystemRepresentation,O_CREAT|O_RDWR|O_NOFOLLOW,0600);
     if(lockFD<0)fail(@"setup_already_running");
@@ -165,6 +182,13 @@ static NSMutableDictionary *wineEnv(NSString *engine) {
         // Chrome flags for Steam's browser (portable_steam.h); the worker's own environment
         // can set others, for testing.
         @"WEBHELPER_EXTRA_ARGS":NSProcessInfo.processInfo.environment[@"WEBHELPER_EXTRA_ARGS"] ?: @"--use-angle=vulkan"}];
+#ifdef MACVOLVO_GPTK4
+    for(NSString *key in env.allKeys)if([key hasPrefix:@"DXMT_"])[env removeObjectForKey:key];
+    [env addEntriesFromDictionary:@{@"CX_ACTIVE_GRAPHICS_BACKEND":@"d3dmetal",@"CX_GRAPHICS_BACKEND":@"d3dmetal",
+        @"WINEDLLOVERRIDES":@"d3d11,dxgi,d3d10=b;d3d10core,winemetal,d3d12,d3d12core,nvapi64,nvngx=",
+        @"D3DMETAL_FRAMEWORK_PATH":join(engine,@"lib/external/D3DMetal.framework/D3DMetal"),@"D3DM_ENABLE_METALFX":@"0",
+        @"MACVOLVO_GPTK4_DISPLAY_FIX":@"1"}];
+#endif
     return env;
 }
 static NSTask *task(NSString *executable, NSArray *args, NSDictionary *env, NSString *logname) {
@@ -279,7 +303,18 @@ static void extract(NSString *archivePath, NSString *destination) {
             if(type==AE_IFLNK) {
                 const char *raw=archive_entry_symlink(entry);NSString *link=raw?[NSString stringWithUTF8String:raw]:nil;
                 if(!link.length || [link hasPrefix:@"/"] || [link containsString:@"\\"])fail(@"unsafe_archive_symlink");
-                NSString *resolved=[[name.stringByDeletingLastPathComponent stringByAppendingPathComponent:link] stringByStandardizingPath];
+                // Foundation retains '..' in relative standardized paths.
+                // Normalize lexically before links exist, without traversing any.
+                NSMutableArray *parts=[[name.stringByDeletingLastPathComponent componentsSeparatedByString:@"/"] mutableCopy];
+                [parts removeObject:@""];
+                for(NSString *part in [link componentsSeparatedByString:@"/"]) {
+                    if(!part.length || [part isEqual:@"."])continue;
+                    if([part isEqual:@".."]) {
+                        if(!parts.count)fail(@"archive_symlink_escapes_runtime");
+                        [parts removeLastObject];
+                    } else [parts addObject:part];
+                }
+                NSString *resolved=[parts componentsJoinedByString:@"/"];
                 if(!safePath(resolved))fail(@"archive_symlink_escapes_runtime");
                 [links addObject:@[dest,link]];continue;
             }
@@ -313,9 +348,10 @@ static void extract(NSString *archivePath, NSString *destination) {
             }
             if(symlink([link[1] fileSystemRepresentation],[link[0] fileSystemRepresentation]))fail(@"archive_symlink_failed");
         }
+        NSString *canonicalDestination=[destination stringByResolvingSymlinksInPath];
         for(NSArray *link in links) {
             NSString *resolved=[link[0] stringByResolvingSymlinksInPath];
-            if(![resolved hasPrefix:[destination stringByAppendingString:@"/"]])fail(@"archive_symlink_escapes_runtime");
+            if(![resolved hasPrefix:[canonicalDestination stringByAppendingString:@"/"]])fail(@"archive_symlink_escapes_runtime");
         }
     } @finally {archive_read_free(a);}
 }
@@ -323,6 +359,11 @@ static void verifyRuntime(NSString *engine, NSString *version) {
     NSDictionary *manifest=readJSON(join(engine,@"runtime.json"));
     if(![manifest[@"version"] isEqual:version] || ![manifest[@"files"] isKindOfClass:NSDictionary.class])fail(@"runtime_identity_mismatch");
     NSDictionary *files=manifest[@"files"];
+#ifdef MACVOLVO_GPTK4
+    if(![manifest[@"graphics_backend"] isEqual:@"d3dmetal"] || ![manifest[@"gptk_version"] hasPrefix:@"4."])fail(@"runtime_identity_mismatch");
+#else
+    if(manifest[@"graphics_backend"] && ![manifest[@"graphics_backend"] isEqual:@"dxmt"])fail(@"runtime_identity_mismatch");
+#endif
     for(NSString *name in files) {
         if(cancelRequested)fail(@"cancelled");
         if(!safePath(name))fail(@"unsafe_manifest_path");
@@ -340,8 +381,15 @@ static void verifyRuntime(NSString *engine, NSString *version) {
         if(generatedGameApp(name))continue;
         if(!S_ISDIR(st.st_mode) && ![name isEqual:@"runtime.json"] && !files[name])fail(@"runtime_unlisted_file");
     }
-    for(NSString *required in @[@"bin/wine",@"bin/wineserver",@"config/dxmt.conf",@"lib/external/libd3dshared.dylib",
-                              @"lib/wine/x86_64-unix/winemetal.so",@"lib/wine/x86_64-unix/winemac.so"])
+    NSMutableArray *requiredFiles=[@[@"bin/wine",@"bin/wineserver",@"config/dxmt.conf",@"lib/external/libd3dshared.dylib",@"lib/wine/x86_64-unix/winemac.so"] mutableCopy];
+#ifdef MACVOLVO_GPTK4
+    [requiredFiles addObjectsFromArray:@[@"lib/external/D3DMetal.framework/Versions/A/D3DMetal",
+        @"lib/wine/x86_64-unix/d3d11.so",@"lib/wine/x86_64-unix/dxgi.so",
+        @"lib/wine/x86_64-windows/d3d11.dll",@"lib/wine/x86_64-windows/dxgi.dll"]];
+#else
+    [requiredFiles addObject:@"lib/wine/x86_64-unix/winemetal.so"];
+#endif
+    for(NSString *required in requiredFiles)
         if(!files[required])fail(@"runtime_required_component_missing");
     for(NSString *architecture in @[@"x86_64-windows",@"i386-windows"])
         for(NSString *module in @[@"winemac.drv",@"mountmgr.sys",@"nsiproxy.sys",@"kernel32.dll",@"ntdll.dll"])
@@ -428,7 +476,8 @@ static void installClient(NSString *installer, NSString *expected) {
 static void closeClient(NSString *gameRunning);
 // Ends whatever is left of the Wine session (the update Agent, Wine's own services).
 static void endSession(NSString *engine) {
-    waitTask(task(join(engine,@"bin/wineserver"),@[@"-k"],wineEnv(engine),@"session-end.log"),15);
+    int code=waitTask(task(join(engine,@"bin/wineserver"),@[@"-k"],wineEnv(engine),@"session-end.log"),15);
+    if(code!=0 && code!=1)fail(@"client_close_failed");
     if(waitTask(task(join(engine,@"bin/wineserver"),@[@"-w"],wineEnv(engine),@"session-end-wait.log"),15))fail(@"client_close_failed");
 }
 /* Apple's Metal Performance HUD (Settings, launch --metal-hud 1) reaches the game through
@@ -473,10 +522,11 @@ static void launchClient(BOOL diagnostic, NSString *play, NSString *fullscreen, 
     if(!steamLaunchOptionsNeedUpdate(defaults,&needsOptions))fail(@"steam_launch_options_invalid");
     NSDictionary *s=state();
     BOOL environmentChanged=![s[@"session_hud"] isEqual:@(hud)] || ![s[@"session_game_mode"] isEqual:@(gameMode)];
+    BOOL needsWindowFix=existing.count && steamWindowFixNeeded();
     // Steam owns its children's environment and cached launch options. Reopen an idle
     // client cleanly when those change; never edit a live client's account config.
-    if(existing.count && (needsOptions || (sessionDisplays && displaysChanged) || environmentChanged)) {
-        event(displaysChanged?@"displays_changed":@"launch_options_changed",nil);
+    if(existing.count && (needsOptions || (sessionDisplays && displaysChanged) || environmentChanged || needsWindowFix)) {
+        event(needsWindowFix?@"steam_browser_repair":(displaysChanged?@"displays_changed":@"launch_options_changed"),nil);
         closeClient(@"close_game_before_maintenance");existing=@[];
     }
     if(!existing.count) {
@@ -508,7 +558,11 @@ static void launchClient(BOOL diagnostic, NSString *play, NSString *fullscreen, 
         configureVoiceMicrophone(engine,nil,YES,NO);
         if(game) {
             [client insertObject:@"-noverifyfiles" atIndex:1];
-            task(join(engine,@"bin/wine"),client,clientEnvironment(wineEnv(engine),hud,gameMode),[NSString stringWithFormat:@"steam-play-%@.log",NSUUID.UUID.UUIDString]);
+            // This second Steam is only an IPC request to the existing client.
+            // Reap it before another launch can enqueue one; if it hangs, end
+            // only this task, leaving Steam, its downloads and the game alone.
+            int code=waitTask(task(join(engine,@"bin/wine"),client,clientEnvironment(wineEnv(engine),hud,gameMode),[NSString stringWithFormat:@"steam-play-%@.log",NSUUID.UUID.UUIDString]),15);
+            if(code)fail(@"steam_launch_request_failed");
             event(@"game_launch_requested",@{@"game":game->key});
         } else focusSession(existing);
         return;
@@ -565,6 +619,11 @@ static void closeClient(NSString *gameRunning) {
         [NSThread sleepForTimeInterval:1];
     }
     if(!closed)fail(@"client_close_failed");
+    // Steam can exit before its browser, overlay and Wine services. Do not
+    // report the installation idle (or move it during uninstall) until those
+    // have stopped too. Recheck in case Steam started a game while closing.
+    for(NSDictionary *p in sessionProcesses())if([p[@"kind"] isEqual:@"game"])fail(gameRunning);
+    endSession(engine);
 }
 static void uninstall(void) {
     // Everything this app created lives under the owned root: the Wine
@@ -582,7 +641,7 @@ static void discardUnused(void) {
     // the empty scaffold ownRoot made (plus setup check logs). Anything else,
     // including any installation state, keeps the folder untouched.
     if([fm fileExistsAtPath:join(root,@"state.json")])fail(@"location_in_use");
-    NSSet *scaffold=[NSSet setWithArray:@[@".macvolvo-owner",@"setup.lock",@".DS_Store",@"runtimes",@"downloads",@"logs",@"home",@"tmp",@"cache"]];
+    NSSet *scaffold=[NSSet setWithArray:@[MV_OWNER_MARKER,@"setup.lock",@".DS_Store",@"runtimes",@"downloads",@"logs",@"home",@"tmp",@"cache"]];
     for(NSString *name in [fm contentsOfDirectoryAtPath:root error:nil]) {
         if(![scaffold containsObject:name])fail(@"location_in_use");
         struct stat st;if(lstat(join(root,name).fileSystemRepresentation,&st))fail(@"location_in_use");
@@ -599,7 +658,7 @@ int main(int argc, const char *argv[]) { @autoreleasepool {
     @try {
         if(argc<2)fail(@"command_required");NSString *command=@(argv[1]);NSMutableDictionary *options=[NSMutableDictionary dictionary];
         for(int i=2;i<argc;i+=2) {if(i+1>=argc || strncmp(argv[i],"--",2))fail(@"invalid_arguments");options[@(argv[i]+2)]=@(argv[i+1]);}
-        NSString *defaultRoot=join([fm URLsForDirectory:NSApplicationSupportDirectory inDomains:NSUserDomainMask].firstObject.path,@"MacVolvo");
+        NSString *defaultRoot=join([fm URLsForDirectory:NSApplicationSupportDirectory inDomains:NSUserDomainMask].firstObject.path,MV_DATA_FOLDER);
         monitorMode=[command isEqual:@"watch"];
         ownRoot(options[@"root"] ?: defaultRoot);
         if([command isEqual:@"preflight"])preflight();
@@ -678,7 +737,7 @@ int main(int argc, const char *argv[]) { @autoreleasepool {
         else if([command isEqual:@"parity-report"])event(@"parity_report",parityReport(runtime(),wineEnv(runtime())));
         else if([command isEqual:@"uninstall"])uninstall();
         else if([command isEqual:@"discard-unused"])discardUnused();
-        else if([command isEqual:@"stop"]) {NSString *engine=runtime();int code=waitTask(task(join(engine,@"bin/wineserver"),@[@"-k"],wineEnv(engine),@"stop.log"),15);if(code!=0 && code!=1)fail(@"stop_failed");event(@"environment_stopped",nil);}
+        else if([command isEqual:@"stop"]) {endSession(runtime());event(@"environment_stopped",nil);}
         else fail(@"unknown_command");
         if(lockFD>=0)close(lockFD);return 0;
     } @catch(NSException *exception) {

@@ -17,7 +17,7 @@ HEADERS = {'archive.h':'11c373fab05e8f017220aff1d89cec3cf32146b44d6cb56aeb12e968
 
 
 def build(output, headers, defines=()):
-    """DEFINES (tests only) are extra -D options, e.g. a Rosetta probe that fails."""
+    """DEFINES selects a build variant or test probes via extra -D options."""
     verify_generated()
     headers.mkdir(parents=True,exist_ok=True)
     for name,expected in HEADERS.items():
@@ -31,7 +31,7 @@ def build(output, headers, defines=()):
     subprocess.run(['/usr/bin/clang','-O2','-fobjc-arc','-Wall','-Wextra','-Werror',
         '-Wno-deprecated-declarations','-ffile-prefix-map='+str(ROOT)+'=/ow2-source','-mmacosx-version-min='+MINIMUM_MACOS,'-I',str(headers),*('-D'+d for d in defines),
         str(ROOT/'scripts/portable_setup.m'),'-framework','Foundation','-framework','AppKit','-framework','CoreAudio','-framework','IOKit','-framework','Metal','-larchive','-o',str(output)],check=True)
-    output.with_suffix('.build.json').write_text(json.dumps({'headers':HEADERS,
+    output.with_suffix('.build.json').write_text(json.dumps({'headers':HEADERS,'defines':list(defines),
         'sources':{name:hashlib.sha256((ROOT/'scripts'/name).read_bytes()).hexdigest() for name in ('portable_setup.m','portable_steam.h','portable_session.h','portable_preferences.h','portable_retina.h','portable_voice.h','portable_network.h','portable_korea.h','portable_metalfx.h','portable_diagnostics.h','candidate_contract.generated.h')},
         'binary_sha256':hashlib.sha256(output.read_bytes()).hexdigest(),
         'links':'System Foundation, CoreAudio, IOKit, Metal, CommonCrypto and libarchive; no bundled Python'},indent=2)+'\n')

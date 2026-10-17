@@ -131,6 +131,31 @@ class NativeSetup(unittest.TestCase):
         self.call('install-runtime','--archive',archive,'--sha256',digest,'--version','v1',success=False)
         self.assertNotIn('active_runtime',self.call('status')[-1]['state'])
 
+    def test_parent_relative_link_inside_runtime_is_preserved_and_verified(self):
+        name='lib/wine/x86_64-unix/d3d11.so'
+        target='../../external/libd3dshared.dylib'
+        original,_=self.archive(extra=[(name,'symlink',target)])
+        archive=self.base/'relative-link.tar.gz'
+        with tarfile.open(original) as src,tarfile.open(archive,'w:gz') as dest:
+            for member in src.getmembers():
+                data=src.extractfile(member).read() if member.isfile() else None
+                if member.name=='runtime.json':
+                    manifest=json.loads(data);manifest['files'][name]={'symlink':target}
+                    data=json.dumps(manifest).encode();member.size=len(data)
+                dest.addfile(member,io.BytesIO(data) if data is not None else None)
+        digest=hashlib.sha256(archive.read_bytes()).hexdigest()
+        self.call('install-runtime','--archive',archive,'--sha256',digest,'--version','v1')
+        self.call('verify')
+        link=self.root/'runtimes/v1'/name
+        self.assertEqual(os.readlink(link),target)
+        self.assertEqual(link.resolve(),(self.root/'runtimes/v1/lib/external/libd3dshared.dylib').resolve())
+
+    def test_parent_relative_link_cannot_escape_runtime(self):
+        archive,digest=self.archive(extra=[('lib/escape','symlink','../../outside')])
+        result=self.call('install-runtime','--archive',archive,'--sha256',digest,'--version','v1',success=False)
+        self.assertEqual(result[-1]['code'],'archive_symlink_escapes_runtime')
+        self.assertNotIn('active_runtime',self.call('status')[-1]['state'])
+
     def test_changed_installed_file_is_detected(self):
         self.install();(self.root/'runtimes/v1/bin/wine').write_text('tampered')
         self.assertEqual(self.call('verify',success=False)[-1]['code'],'runtime_file_hash_mismatch')
@@ -156,7 +181,25 @@ class NativeSetup(unittest.TestCase):
 
     def test_close_client_without_a_session_reports_closed(self):
         self.install()
+        server=self.root/'runtimes/v1/bin/wineserver'
+        server.write_text('#!/bin/sh\nprintf "%s\\n" "$1" >> server-calls\nexit 0\n');server.chmod(0o755)
         self.assertEqual(self.call('close-client')[-1]['stage'],'client_closed')
+        self.assertEqual((self.root/'server-calls').read_text().splitlines(),['-k','-w'])
+
+    def test_force_quit_waits_for_the_owned_server_to_exit(self):
+        self.install()
+        server=self.root/'runtimes/v1/bin/wineserver'
+        server.write_text('#!/bin/sh\nprintf "%s\\n" "$1" >> server-calls\nexit 0\n');server.chmod(0o755)
+        self.assertEqual(self.call('stop')[-1]['stage'],'environment_stopped')
+        self.assertEqual((self.root/'server-calls').read_text().splitlines(),['-k','-w'])
+
+    def test_force_quit_does_not_report_success_when_server_wait_fails(self):
+        self.install()
+        server=self.root/'runtimes/v1/bin/wineserver'
+        server.write_text('#!/bin/sh\nif [ "$1" = "-w" ]; then exit 7; fi\nexit 0\n');server.chmod(0o755)
+        events=self.call('stop',success=False)
+        self.assertEqual(events[-1]['code'],'client_close_failed')
+        self.assertNotIn('environment_stopped',[row['stage'] for row in events])
 
     def test_missing_manifest_file_or_extra_payload_is_rejected(self):
         archive,digest=self.archive(extra=[('unexpected.txt','file',b'extra')])
@@ -209,7 +252,7 @@ class NativeSetup(unittest.TestCase):
     def test_external_apfs_volume_installs_and_uninstalls_to_its_own_trash(self):
         mount=self.volume('APFS','External APFS');self.root=mount/'Overwatch2Mac'
         status=self.call('status')[-1]
-        self.assertGreater(status['free_bytes'],0);self.assertTrue((self.root/'.overwatch-2-mac-owner').exists())
+        self.assertGreater(status['free_bytes'],0);self.assertTrue((self.root/'.macvolvo-owner').exists())
         (self.root/'environment').mkdir();(self.root/'environment'/'system.reg').write_text('x')
         trashed=Path(self.call('uninstall')[-1]['trashed'])
         self.assertFalse(self.root.exists());self.assertTrue(trashed.is_relative_to(mount))
@@ -223,7 +266,7 @@ class NativeSetup(unittest.TestCase):
                 self.assertEqual(self.call('status',success=False)[-1]['code'],code)
                 self.assertFalse(self.root.exists())
         # An installation that predates the rule is never re-judged or blocked.
-        self.root.mkdir();(self.root/'.overwatch-2-mac-owner').write_text('ow2-native-setup-v1\n')
+        self.root.mkdir();(self.root/'.macvolvo-owner').write_text('macvolvo-native-v01\n')
         self.call('status')
 
     def test_voice_microphone_points_wine_at_the_built_in_microphone(self):

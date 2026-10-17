@@ -5,7 +5,14 @@
 A free, open-source Mac launcher built on [Recall](https://github.com/AsherJN/recall).
 Install Steam, choose your game, and play through Wine and DXMT.
 
-## [⬇ Download MacVolvo for macOS (.dmg)](https://github.com/haeli05/MacVolvo/releases/download/v1.0/MacVolvo-1.0.dmg)
+## [⬇ MacVolvo · DXMT](https://github.com/haeli05/MacVolvo/releases/download/v1.0/MacVolvo-1.0.dmg) · [⬇ MacVolvo GPTK4](https://github.com/haeli05/MacVolvo/releases/download/v1.0-gptk4-eval.1/MacVolvo-GPTK4-1.0.dmg)
+
+Both downloads are Developer ID signed, Apple notarized and stapled.
+
+**MacVolvo GPTK4** is a separate evaluation app using Apple's D3DMetal 4.0 beta 3
+for DirectX 11. It has its own Steam setup and does not automatically import
+existing games. No FPS improvement over the original app has been established.
+See the [GPTK4 release notes](docs/releases/v1.0-gptk4-eval.1.md).
 
 [Introduction](https://haeli05.github.io/MacVolvo/) ·
 [Downloads & releases](https://github.com/haeli05/MacVolvo/releases) ·

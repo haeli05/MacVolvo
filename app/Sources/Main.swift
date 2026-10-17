@@ -9,7 +9,7 @@ import Darwin
     func applicationDidFinishLaunching(_ notification:Notification) {
         // NSWorkspace normally routes repeat opens to this process. The file lock
         // also covers explicit `open -n` and copies of the same app bundle.
-        let lockDirectory=FileManager.default.urls(for:.cachesDirectory,in:.userDomainMask)[0].appendingPathComponent("app.macvolvo.launcher")
+        let lockDirectory=FileManager.default.urls(for:.cachesDirectory,in:.userDomainMask)[0].appendingPathComponent(Brand.bundleIdentifier)
         try? FileManager.default.createDirectory(at:lockDirectory,withIntermediateDirectories:true,attributes:[.posixPermissions:0o700])
         lockFD=open(lockDirectory.appendingPathComponent("app.lock").path,O_CREAT|O_RDWR|O_NOFOLLOW,0o600)
         if lockFD<0 || flock(lockFD,LOCK_EX|LOCK_NB) != 0 {
@@ -69,6 +69,7 @@ import Darwin
         return main
     }
     func validateMenuItem(_ item:NSMenuItem)->Bool {
+        if item.action == #selector(checkForUpdates) && !Brand.allowsUpdates { return false }
         // Still on the disk image: only moving to Applications, Help and About.
         if model.screen == .moveApp,let action=item.action,[#selector(launch),#selector(forceQuit),#selector(play(_:)),#selector(settings),#selector(checkForUpdates),#selector(uninstall)].contains(action) { return false }
         if item.action == #selector(launch) || item.action == #selector(forceQuit) { return model.clientInstalled && !model.busy }

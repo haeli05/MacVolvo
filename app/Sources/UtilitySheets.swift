@@ -155,7 +155,7 @@ struct SettingsSheet:View {
     @ViewBuilder private var page:some View {
         switch model.settingsTab {
         case .general:
-            updates
+            if Brand.allowsUpdates { updates }
             steam
         case .display:
             display

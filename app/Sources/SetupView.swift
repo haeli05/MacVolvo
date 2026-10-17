@@ -256,6 +256,7 @@ struct VersionStatus: View {
     var body:some View {
         HStack(spacing:6) {
             Text("Version \(UpdateCheck.installed)")
+            if !Brand.allowsUpdates { Text("·");Text("GPTK4 evaluation") }
             switch model.update {
             case .available(let item):
                 Text("·")
@@ -269,8 +270,10 @@ struct VersionStatus: View {
                 Text("·");Text("Up to date")
             default: EmptyView()
             }
-            Text("·")
-            Button("What’s New") { model.sheet = .whatsNew }.buttonStyle(.borderless)
+            if Brand.allowsUpdates {
+                Text("·")
+                Button("What’s New") { model.sheet = .whatsNew }.buttonStyle(.borderless)
+            }
         }.font(LauncherStyle.font(12)).foregroundStyle(.secondary)
     }
 }

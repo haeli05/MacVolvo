@@ -15,6 +15,7 @@ code or material embedded in a patch or generated test fixture.
 | NVIDIA NVAPI headers | [NVIDIA/nvapi](https://github.com/NVIDIA/nvapi) at `d08488fcc82eef313b0464db37d2955709691e94`, a DXMT submodule | MIT; used to build DXMT's NVAPI and DLSS stand-ins (MetalFX upscaling), which contain no NVIDIA code; the license text ships in the app under `Contents/Resources/Licenses/NVAPI-MIT` |
 | Native runtime dependencies | Soju's referenced library stack, FreeType, SDL2, Wine Mono, and their dependencies | License texts for the bundled libraries ship in the app under `Contents/Resources/Licenses` |
 | Apple support components and Rosetta | Apple | Proprietary; absent from this repository, bundled in the app under Apple's accompanying license, not covered by the project's Apache 2.0 license or the Wine/DXMT licenses |
+| D3DMetal 4.0 beta 3 (GPTK4 evaluation app) | Apple's Evaluation environment for Windows games | The complete original framework and matching `/redist` components are included unmodified for free, non-commercial evaluation on Apple-branded systems. Apple's license and acknowledgements ship under `Contents/Resources/Licenses/apple-gptk4`; these components are not Apache-licensed. Rosetta is provided by macOS, not included in this package. |
 | Battle.net and Overwatch | Blizzard | Proprietary; obtained through official channels and absent from this repository |
 
 Upstream patches preserve their applicable terms. Generated tests incorporating

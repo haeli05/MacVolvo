@@ -15,12 +15,20 @@ here.
   (game table: `cs2`/730/`cs2.exe`, `deadlock`/1422450/`deadlock.exe`; Steam window fix;
   per-game Game Mode bundles; per-game DXMT profile). `launch --game cs2|deadlock` starts a
   game through Steam (`-applaunch`, `-fullscreen -w -h`, `-nojoy`); without `--game` only
-  Steam opens. `status` reports installed `games`. Protocol names that say "battlenet"
+  Steam opens. When Steam is already open, its temporary launch-request process must exit
+  within 15 seconds; a timeout terminates that requester rather than the whole Wine
+  session. Closing Steam waits for its normal exit, then stops the owned Wine session
+  and waits for the remaining services to exit. A running game blocks this cleanup;
+  the explicit Force Quit action closes both the game and Steam and waits for exit.
+  `status` reports installed `games`. Protocol names that say "battlenet"
   (stages, events, `install-battlenet`) are kept so the app's state machine carries over;
   they mean Steam. Overwatch-only parts are dormant: its settings file
   (`portable_preferences.h` reads and writes none), the shader pipeline helper (not built),
   MetalFX and Korean support (headers kept for the support commands).
-- Steam's window on Wine 11: Steam's browser draws black with its GPU off. The worker turns
+- Steam's window on Wine 11: Steam's browser draws black with its GPU off. If an idle
+  Steam's first update or a later update replaces the helper, Open Steam closes and
+  reopens that client to restore the wrapper. A running game prevents this restart.
+  The worker turns
   GPU web views on (`GPUAccelWebViewsV3`) and puts `Resources/steamwebhelper.exe`
   (`scripts/webhelper_wrapper.c`, built with llvm-mingw) in place of Steam's helper, which
   runs the real one with `--in-process-gpu --use-angle=vulkan`; Steam then starts with
