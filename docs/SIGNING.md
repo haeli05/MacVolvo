@@ -1,6 +1,25 @@
-# Sign and launch MacVolvo 1.0
+# Sign and launch MacVolvo
 
 ## Current signing status
+
+Version **1.1 build 9** is Developer ID signed with team `QZTVN6KK9H`.
+Apple accepted the app and unpacked runtime, and then the DMG, on October 17,
+2026. Both are stapled and Gatekeeper accepts them as `Notarized Developer ID`.
+The app also passes the updater's notarization, team, identifier and version
+checks. The signed runtime archive is unchanged from v1.0.
+
+- App submission: `1079ef6e-21b2-49dc-a7ac-258aed40791b`.
+- DMG submission: `14efd357-6e2e-464a-b6d9-da10b56a2ffb`.
+- App: `runtime/build/v1.1-signed/MacVolvo.app`.
+- Installer: `runtime/release/MacVolvo-1.1.dmg` (242,766,908 bytes).
+- SHA-256: `81f3c800db6f28a88db285ec77286f89447fb95b06797db533fd8be6c196cf3b`.
+
+Validation includes 137 portable tests, Swift launch-readiness/update checks
+and ten synthetic DXMT display-change checkpoints. Deadlock's reported UI
+misalignment remains unresolved; see [v1.1 release notes](releases/v1.1.md).
+The original v1.0 and GPTK4 evaluation installers are retained.
+
+## MacVolvo 1.0 signing record
 
 Version 1.0 build 6 and its runtime are Developer ID signed with team
 `QZTVN6KK9H`. Signature verification, all 230 bundle-file hashes, 114 portable

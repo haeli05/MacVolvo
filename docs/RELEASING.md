@@ -1,15 +1,15 @@
-# Publishing MacVolvo 1.0
+# Publishing MacVolvo
 
 The source branch, intro page and draft release can be reviewed independently
-of the final signed installer. App version: 1.0; signed candidate build: 6.
+of the final signed installer. App version: 1.1; build: 9.
 Runtime: macvolvo-1.0-signed.1.
-The earlier unsigned candidate remains build 5 with phase2-20261014.1.
+This reuses v1.0's qualified signed runtime without rebuilding or changing it.
 
 ## Current release candidate
 
-The app and `runtime/release/MacVolvo-1.0.dmg` are Developer ID signed,
-Apple notarized, stapled and Gatekeeper-verified. The earlier unsigned ZIP is
-retained as a historical build 5 artifact. See [SIGNING.md](SIGNING.md) for the
+The app and `runtime/release/MacVolvo-1.1.dmg` are Developer ID signed,
+Apple notarized, stapled and Gatekeeper-verified. The v1.0 and GPTK4 evaluation
+installers are retained. See [SIGNING.md](SIGNING.md) for the
 commands, submission IDs and installer checksum.
 
 Runtime source identities and patches are in `SOURCES.json`. Before public
@@ -27,10 +27,11 @@ An Apple Development identity is not a substitute.
    the app. Do not bypass failed signature or notarization checks.
 3. Package with `scripts/build_release_dmg.py` using the same identity and
    notary profile. It checks the app's signature/staple and notarizes the DMG.
-4. Upload `MacVolvo-1.0.dmg` and `MacVolvo-1.0.dmg.sha256` to the draft release.
+4. Upload `MacVolvo-1.1.dmg`, `MacVolvo-1.1.dmg.sha256` and the validation JSON to a new v1.1 draft release.
 5. Recheck install, Steam/game launch, return from a full match, and known issues.
-   Replace the test-package instructions with final installation notes.
-6. Publish the release. Keep `<!-- minimum-macos: 26.5 -->` in its body.
+   Record incomplete gameplay validation and known issues in the release notes.
+6. Publish the release as latest. Keep `<!-- minimum-macos: 26.5 -->` in its body.
+   The normal app's update check ignores prereleases; GPTK4 remains separate.
 
 ## GitHub intro site
 

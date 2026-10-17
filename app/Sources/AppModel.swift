@@ -657,12 +657,15 @@ final class AppModel {
         switch result {
         case .existing(let name):
             existingName=name == "Steam" ? name : gameName;screen = .running
-            // One immediate check, never the 90-second fresh-launch wait.
-            let sessions=try await service.run("session")
-            let processes=sessions.last?["processes"] as? [[String:Any]] ?? []
-            let windows=await LaunchReadiness.visibleWindows()
-            if let pid=LaunchReadiness.visibleProcess(windows,processes:processes),sheet == nil {
-                NSRunningApplication(processIdentifier:pid)?.activate(options:[])
+            // Steam restores its browser through IPC. Searching the session's
+            // visible windows here prefers the game and steals focus back.
+            if name != "Steam" {
+                let sessions=try await service.run("session")
+                let processes=sessions.last?["processes"] as? [[String:Any]] ?? []
+                let windows=await LaunchReadiness.visibleWindows()
+                if let pid=LaunchReadiness.visibleProcess(windows,processes:processes),sheet == nil {
+                    NSRunningApplication(processIdentifier:pid)?.activate(options:[])
+                }
             }
         case .ready(let pid):
             existingName=game?.title ?? "Steam";screen = .running

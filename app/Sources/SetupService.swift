@@ -35,6 +35,8 @@ struct SetupFailure: Error {
         case "steam_launch_options_invalid": return "Steam’s saved launch options couldn’t be read. Check the game’s Launch Options in Steam Properties for an unfinished quote, then try again."
         case "steam_launch_options_write_failed": return "Steam’s launch options couldn’t be saved. Close Steam and both games, then try again."
         case "steam_launch_request_failed": return "Steam didn’t finish accepting the launch request. Check Steam and your game, then try Play again."
+        case "steam_client_not_running": return "Steam has exited while your game is still running. Finish and close the game, then open Steam again."
+        case "steam_window_request_failed": return "Steam didn’t finish accepting the window request. Finish and close your game, then open Steam again."
         case "unknown_game": return "That game isn’t installed yet. Open Steam, install it from your Library, then try again."
         case "retina_configuration_failed": return "The display setup couldn’t finish. Close your game and Steam, then retry. If it happens again, open Help & FAQ to save a support report."
         case "directory_not_owned_by_app", "invalid_ownership_marker", "existing_environment_not_owned": return "The destination contains data this app did not create. Nothing was replaced. Open Help & FAQ for installation guidance."

@@ -492,6 +492,19 @@ static NSMutableDictionary *clientEnvironment(NSMutableDictionary *env, BOOL hud
         @"MTL_HUD_ELEMENTS":@"device,rosetta,layersize,memory,gamemode,fps,gputime,frameinterval,frameintervalgraph,shaders"}];
     return env;
 }
+/* Steam can be running silently in the tray, with its window owned by CEF rather
+ * than steam.exe's macOS application. Ask Steam to show its main window through
+ * its normal IPC path; merely activating that macOS application cannot restore it. */
+static void openSteamWindow(NSString *engine, NSArray *existing, BOOL hud, BOOL gameMode) {
+    BOOL client=NO;for(NSDictionary *p in existing)client|=[p[@"kind"] isEqual:@"client"];
+    if(!client)fail(@"steam_client_not_running");
+    int code=waitTask(task(join(engine,@"bin/wine"),
+        @[clientPath(),@"-no-cef-sandbox",@"-noverifyfiles",@"steam://open/main"],
+        clientEnvironment(wineEnv(engine),hud,gameMode),
+        [NSString stringWithFormat:@"steam-open-%@.log",NSUUID.UUID.UUIDString]),15);
+    if(code)fail(@"steam_window_request_failed");
+    event(@"steam_window_requested",nil);
+}
 /* Opens Steam; with a game (play), Steam starts it (-applaunch). A running Steam receives
  * the game from a second steam.exe, which hands it over and exits. */
 static void launchClient(BOOL diagnostic, NSString *play, NSString *fullscreen, BOOL hud, BOOL gameMode) {
@@ -506,11 +519,10 @@ static void launchClient(BOOL diagnostic, NSString *play, NSString *fullscreen, 
     BOOL displaysChanged=displays && ![displays isEqual:sessionDisplays];
     BOOL running=NO;for(NSDictionary *p in existing)running|=[p[@"kind"] isEqual:@"game"];
     if(running) {
-        // Open Steam must focus the client even while a game owns the session.
-        // Play keeps the existing game foreground rather than starting a duplicate.
-        NSArray *targets=game ? existing : [existing filteredArrayUsingPredicate:
-            [NSPredicate predicateWithFormat:@"kind == %@",@"client"]];
-        focusSession(targets);return;
+        // A window request leaves the game and its Wine session running. Play
+        // keeps the existing game foreground rather than starting a duplicate.
+        if(game)focusSession(existing);else openSteamWindow(engine,existing,hud,gameMode);
+        return;
     }
     if(game && fullscreen) {
         NSDictionary *choice=gameLaunchOptions(NO)[game->key];
@@ -564,7 +576,7 @@ static void launchClient(BOOL diagnostic, NSString *play, NSString *fullscreen, 
             int code=waitTask(task(join(engine,@"bin/wine"),client,clientEnvironment(wineEnv(engine),hud,gameMode),[NSString stringWithFormat:@"steam-play-%@.log",NSUUID.UUID.UUIDString]),15);
             if(code)fail(@"steam_launch_request_failed");
             event(@"game_launch_requested",@{@"game":game->key});
-        } else focusSession(existing);
+        } else openSteamWindow(engine,existing,hud,gameMode);
         return;
     }
     configureRetina();

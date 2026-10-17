@@ -8,12 +8,12 @@ import Foundation
     static let notes="## What's new\n\n- **Faster.** Frames take less work.\n- See [the notes](https://example.com).\n\n## Install\n\n- Drag the app.\n"
     static func release(_ tag:String, assets:[[String:Any]], draft:Bool=false, prerelease:Bool=false, body:String=notes) -> Data {
         try! JSONSerialization.data(withJSONObject:["tag_name":tag,"draft":draft,"prerelease":prerelease,
-            "html_url":"https://github.com/AsherJN/recall/releases/tag/\(tag)",
+            "html_url":"https://github.com/\(Brand.repositoryPath)/releases/tag/\(tag)",
             "body":body,"assets":assets])
     }
-    static func disk(_ version:String, digest:String?="sha256:"+String(repeating:"a",count:64), name:String="Recall") -> [String:Any] {
+    static func disk(_ version:String, digest:String?="sha256:"+String(repeating:"a",count:64), name:String=Brand.name) -> [String:Any] {
         var asset:[String:Any]=["name":"\(name)-\(version).dmg","size":242_000_000,
-            "browser_download_url":"https://github.com/AsherJN/recall/releases/download/v\(version)/\(name)-\(version).dmg"]
+            "browser_download_url":"https://github.com/\(Brand.repositoryPath)/releases/download/v\(version)/\(name)-\(version).dmg"]
         if let digest { asset["digest"]=digest }
         return asset
     }
@@ -37,14 +37,14 @@ import Foundation
         do { _ = try UpdateCheck.parse(release("v1.0.1",assets:[insecure]),current:"1.0.0");fatalError("Accepted plain HTTP") }
         catch let e as SetupFailure { precondition(e.code == "update_unavailable") }
         let checksumOnly=disk("1.0.1",digest:nil)
-        let withChecksum=try UpdateCheck.parse(release("v1.0.1",assets:[checksumOnly,["name":"Recall-1.0.1.dmg.sha256","browser_download_url":"https://github.com/c.sha256"]]),current:"1.0.0")
+        let withChecksum=try UpdateCheck.parse(release("v1.0.1",assets:[checksumOnly,["name":Brand.diskImage("1.0.1")+".sha256","browser_download_url":"https://github.com/c.sha256"]]),current:"1.0.0")
         precondition(withChecksum?.sha256 == "" && withChecksum?.checksum != nil)
         // After a rename the one "<name>-<version>.dmg" is used; this app's own
         // name wins when several exist; two foreign names are ambiguous.
         let renamed=try UpdateCheck.parse(release("v1.0.1",assets:[disk("1.0.1",name:"NewName")]),current:"1.0.0")
         precondition(renamed?.download.lastPathComponent == "NewName-1.0.1.dmg")
         let preferred=try UpdateCheck.parse(release("v1.0.1",assets:[disk("1.0.1",name:"Other"),disk("1.0.1")]),current:"1.0.0")
-        precondition(preferred?.download.lastPathComponent == "Recall-1.0.1.dmg")
+        precondition(preferred?.download.lastPathComponent == Brand.diskImage("1.0.1"))
         do { _ = try UpdateCheck.parse(release("v1.0.1",assets:[disk("1.0.1",name:"A"),disk("1.0.1",name:"B")]),current:"1.0.0");fatalError("Picked an ambiguous image") }
         catch let e as SetupFailure { precondition(e.code == "update_unavailable") }
         let renamedChecksum=try UpdateCheck.parse(release("v1.0.1",assets:[disk("1.0.1",digest:nil,name:"NewName"),["name":"NewName-1.0.1.dmg.sha256","browser_download_url":"https://github.com/n.sha256"]]),current:"1.0.0")
@@ -68,6 +68,8 @@ import Foundation
         precondition(unmarkedOnTahoe?.version == "1.1.0" && markedOnTahoe?.notes.count == 2)
         // From 1.2 a release needs macOS 26.5 (Overwatch hangs under older Rosetta): offered on 26.5 and later only.
         let needs265=notes+"\n<!-- minimum-macos: 26.5 -->\n"
+        let v11=try UpdateCheck.parse(release("v1.1",assets:[disk("1.1")],body:needs265),current:"1.0",system:"26.5")
+        precondition(v11?.version == "1.1" && v11?.download.lastPathComponent == "MacVolvo-1.1.dmg")
         precondition(UpdateCheck.minimumMacOS(needs265) == "26.5")
         for (system,offered) in [("15.8.1",false),("26.4.1",false),("26.5",true),("26.6.2",true),("27.0",true)] {
             let update=try UpdateCheck.parse(release("v1.2.0",assets:[disk("1.2.0")],body:needs265),current:"1.1.0",system:system)

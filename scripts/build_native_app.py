@@ -20,7 +20,7 @@ ROOT=Path(__file__).resolve().parents[1]
 # The bundle and executable name players see; Brand.swift holds the in-app
 # copy. Its own identifier and data folder keep it apart from Recall, which it is built on.
 APP_NAME='MacVolvo'
-APP_BUILD='8'
+APP_BUILD='9'
 # The games' voice chat runs under this app's microphone permission (Microphone.swift); the
 # hardened runtime gives an app signed without the entitlement silence, with no prompt.
 ENTITLEMENTS={'com.apple.security.device.audio-input':True}

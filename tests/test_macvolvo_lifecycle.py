@@ -66,6 +66,9 @@ static void configureVoiceMicrophone(NSString *engine,id forced,BOOL apply,BOOL 
     (void)engine;(void)forced;(void)apply;(void)settle;
 }
 static void focusSession(NSArray *rows) {(void)rows;}
+static void openSteamWindow(NSString *engine,NSArray *rows,BOOL hud,BOOL gameMode) {
+    (void)engine;(void)rows;(void)hud;(void)gameMode;
+}
 static NSString *clientPath(void) {return join(root,@"steam.exe");}
 static NSArray *sessionProcesses(void) {
     int call=inventoryCalls++;

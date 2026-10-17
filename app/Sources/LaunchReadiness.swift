@@ -40,6 +40,9 @@ enum LaunchReadiness {
         // the scoped worker. A minimized/other-desktop window must not send a
         // reopen through the fresh-launch timeout again.
         let launchingGame=launchEvents.contains {$0["stage"] as? String == "game_launch_requested"}
+        if !launchingGame && launchEvents.contains(where:{$0["stage"] as? String == "steam_window_requested"}) {
+            return .existing("Steam")
+        }
         if let existing=launchEvents.last(where:{$0["stage"] as? String == "session_existing"}),
            !launchingGame || existing["kind"] as? String == "game" {
             return .existing(existing["kind"] as? String == "game" ? "game" : "Steam")

@@ -5,7 +5,7 @@
 A free, open-source Mac launcher built on [Recall](https://github.com/AsherJN/recall).
 Install Steam, choose your game, and play through Wine and DXMT.
 
-## [⬇ MacVolvo · DXMT](https://github.com/haeli05/MacVolvo/releases/download/v1.0/MacVolvo-1.0.dmg) · [⬇ MacVolvo GPTK4](https://github.com/haeli05/MacVolvo/releases/download/v1.0-gptk4-eval.1/MacVolvo-GPTK4-1.0.dmg)
+## [⬇ MacVolvo v1.1 · DXMT](https://github.com/haeli05/MacVolvo/releases/download/v1.1/MacVolvo-1.1.dmg) · [⬇ MacVolvo GPTK4](https://github.com/haeli05/MacVolvo/releases/download/v1.0-gptk4-eval.1/MacVolvo-GPTK4-1.0.dmg)
 
 Both downloads are Developer ID signed, Apple notarized and stapled.
 
@@ -18,9 +18,9 @@ See the [GPTK4 release notes](docs/releases/v1.0-gptk4-eval.1.md).
 [Downloads & releases](https://github.com/haeli05/MacVolvo/releases) ·
 [Report a bug](https://github.com/haeli05/MacVolvo/issues)
 
-> **v1.0 release candidate.** Known launch, audio and performance issues remain.
-> Read the release notes before downloading. Build 6 is Developer ID signed and
-> notarized; the installer is available in the [v1.0 prerelease](https://github.com/haeli05/MacVolvo/releases/tag/v1.0).
+> **v1.1.** Includes Steam window restoration, browser recovery and Wine session
+> cleanup. Known launch, audio, performance and Deadlock UI issues remain.
+> Read the [release notes](docs/releases/v1.1.md) before downloading.
 
 ## What it does
 
@@ -78,9 +78,13 @@ an account you're prepared to take that risk with.
   Shader compilation can cause initial stutters, but it does not explain every report.
 - **Deadlock camera stops responding after a match:** clicks may still work.
   Quit and restart the game. Post-match recovery has not been fully verified.
+- **Deadlock UI or click positions shift after changing video settings:** this
+  has been reported in the original DXMT app and remains under investigation.
+  Close Deadlock, turn off its Fullscreen option in MacVolvo, and relaunch at a
+  resolution that fits your display before trying the in-game settings again.
 - **Steam store/profile flicker:** pages may flicker while loading.
 
-See [v1.0 release notes](docs/releases/v1.0.md) for the current validation limits.
+See [v1.1 release notes](docs/releases/v1.1.md) for the current validation limits.
 
 ## Building from source
 

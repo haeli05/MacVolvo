@@ -15,6 +15,11 @@ import CoreGraphics
                 windows:{fatalError("Existing session waited for a visible window")})
             precondition(existing == .existing(kind == "game" ? "game" : "Steam"))
         }
+        let restored=try await LaunchReadiness.wait(
+            launchEvents:[["stage":"steam_window_requested"]],stopped:{false},
+            session:{fatalError("Steam restore entered fresh-launch polling")},
+            windows:{fatalError("Steam restore selected the visible game window")})
+        precondition(restored == .existing("Steam"))
         var ticks=0
         // A process exists immediately; another installation's window and a
         // tiny startup surface must not dismiss the launcher. A one-frame
